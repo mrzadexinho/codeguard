@@ -4,11 +4,11 @@
 [![npm version](https://img.shields.io/npm/v/codeguard-mcp.svg)](https://www.npmjs.com/package/codeguard-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-AI code review MCP server. Automated pattern detection for bugs, security vulnerabilities, and silent failures.
+Context-aware AI code review MCP server. Automated pattern detection for bugs, security vulnerabilities, insecure defaults, and silent failures.
 
 ## Problem
 
-AI assistants review code but miss common anti-patterns that automated detection catches instantly: empty catch blocks, hardcoded secrets, SQL injection, swallowed errors. codeguard runs 14 pattern-matching rules locally with zero API calls, returning structured findings with confidence scores.
+AI assistants review code but miss common anti-patterns that automated detection catches instantly. codeguard runs 25 context-aware rules locally with zero API calls, returning structured findings with confidence scores. The context layer understands comments, strings, imports, and file types to eliminate false positives.
 
 ## Quick Start
 
@@ -48,16 +48,28 @@ for (const finding of result.findings) {
 | `check_error_handling` | Specialized silent failure detection (empty catches, swallowed errors) |
 | `list_rules` | List all available rules with IDs, categories, and severities |
 
-## Rules (14 total)
+## Context-Aware Analysis
 
-### Error Handling (4 rules, ERR001-ERR004)
-Detects empty catch blocks, catch-only-log patterns, unhandled promise rejections, and pointless re-throws.
+Unlike simple pattern matchers, codeguard understands code context:
 
-### Security (5 rules, SEC001-SEC005)
-Detects dynamic code execution, unsafe HTML injection, hardcoded credentials, SQL injection via string interpolation, and shell command injection.
+- Skips patterns inside **comments** (single-line, block, Python docstrings)
+- Skips patterns inside **string literals** (template literals, multi-line strings)
+- Detects **file type** (test, config, migration, generated) to adjust rule behavior
+- Tracks **imports** to understand what utilities are available
+- Identifies **try-catch regions** for error handling analysis
 
-### Code Quality (5 rules, QA001-QA005)
-Detects debug logging left in production code, TODO/FIXME/HACK markers, magic numbers, deeply nested control flow, and overly long functions.
+This eliminates false positives like flagging `password` inside a comment or `eval` inside a string.
+
+## Rules (25 total)
+
+### Error Handling (6 rules, ERR001-ERR006)
+Detects empty catch blocks, catch-only-log patterns, unhandled promise rejections, pointless re-throws, async functions without error handling, and optional chaining on security-critical paths.
+
+### Security (10 rules, SEC001-SEC010)
+Detects dynamic code execution, unsafe HTML injection, hardcoded credentials, SQL injection, shell command injection, fail-open environment defaults, debug flags left on, permissive CORS, weak cryptographic algorithms, and unsafe deserialization.
+
+### Code Quality (7 rules, QA001-QA007)
+Detects debug logging in production, TODO/FIXME/HACK markers, magic numbers, deeply nested control flow, overly long functions, unused imports, and duplicate conditions.
 
 Run `list_rules` to see all rules with their IDs, severities, and supported languages.
 
@@ -66,37 +78,40 @@ Run `list_rules` to see all rules with their IDs, severities, and supported lang
 ```
 codeguard/
   src/
+    context/         # Context-aware analysis layer
+      analyzer       # Single-pass scanner: comments, strings, imports, regions
+      types          # FileContext, LineContext, FileType
     parser/          # Diff and source file parsing
       diff-parser    # Unified diff to structured DiffFile[]
       code-parser    # Source to ParsedFile with language detection
     rules/           # Pattern matching engine
-      engine         # RuleEngine: applies rules, filters, sorts
-      error-handling # ERR001-004
-      security       # SEC001-005
-      code-quality   # QA001-005
+      engine         # RuleEngine: builds context, applies rules, filters, sorts
+      error-handling # ERR001-006
+      security       # SEC001-005, SEC010
+      insecure-defaults # SEC006-009 (TrailOfBits patterns)
+      code-quality   # QA001-007
     mcp/             # MCP server layer
       tools/         # 4 MCP tools
-  tests/             # 64 tests mirroring src/ structure
+  tests/             # 142 tests mirroring src/ structure
 ```
 
 ## Key Design Decisions
 
 | Decision | Why |
 |----------|-----|
+| Context layer | Single-pass analyzer eliminates false positives in comments/strings |
 | Regex pattern matching | Zero dependencies, instant results, no AST parser needed |
 | Confidence scores (0-100) | Filter noise: use `min_confidence: 80` for high-signal only |
 | Category filtering | Focus analysis: `['security']` for security-only review |
 | Language detection | Auto-filters rules by file extension |
-| Severity sorting | Critical findings surface first |
+| File type awareness | Skips security rules in test files, adjusts behavior for configs |
 
 ## Confidence Scoring
 
-Inspired by pr-review-toolkit confidence-based filtering:
-
-- **90-100**: Near-certain detection (empty catch, code execution patterns)
-- **80-89**: High confidence (hardcoded secrets, injection patterns)
-- **70-79**: Moderate confidence (log-only catches, deep nesting)
-- **60-69**: Low confidence (magic numbers)
+- **90-100**: Near-certain detection (empty catch, unsafe deserialization)
+- **80-89**: High confidence (hardcoded secrets, injection patterns, insecure defaults)
+- **70-79**: Moderate confidence (log-only catches, deep nesting, unused imports)
+- **60-69**: Low confidence (magic numbers, optional chain heuristics, async error handling)
 
 Use `min_confidence: 80` to get only high-signal findings.
 
