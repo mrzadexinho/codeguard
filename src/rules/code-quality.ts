@@ -203,10 +203,134 @@ export const longFunction: Rule = {
   },
 };
 
+export const unusedImport: Rule = {
+  id: 'QA006',
+  name: 'unused-import',
+  category: 'code-quality',
+  severity: 'low',
+  languages: ['typescript', 'javascript'],
+  detect(lines, filePath, context?) {
+    const findings: Finding[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
+      const line = lines[i].trim();
+
+      // Skip type-only imports, default imports, star imports, side-effect imports
+      if (/^import\s+type\s/.test(line)) continue;
+      if (/^import\s+\*\s+as\s/.test(line)) continue;
+      if (/^import\s+['"]/.test(line)) continue;
+
+      // Match named imports: import { name1, name2 } from '...'
+      const match = line.match(/^import\s+(?:\w+\s*,\s*)?\{\s*([^}]+)\}\s+from\s/);
+      if (!match) continue;
+
+      const names = match[1].split(',').map((n) => {
+        // Handle aliased imports: original as alias
+        const parts = n.trim().split(/\s+as\s+/);
+        return parts.length > 1 ? parts[1].trim() : parts[0].trim();
+      }).filter((n) => n.length > 0);
+
+      // Build non-import lines content for searching
+      const nonImportContent = lines
+        .filter((_, idx) => {
+          const trimmed = lines[idx].trim();
+          return !trimmed.startsWith('import ');
+        })
+        .join('\n');
+
+      for (const name of names) {
+        // Check if the name appears in non-import lines as a word boundary match
+        const nameRegex = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+        if (!nameRegex.test(nonImportContent)) {
+          findings.push({
+            rule: this.id,
+            severity: this.severity,
+            confidence: 75,
+            category: this.category,
+            message: `Import "${name}" appears unused in the rest of the file`,
+            file: filePath,
+            line: i + 1,
+            snippet: lines[i],
+            suggestion: `Remove unused import "${name}" or verify it is needed`,
+          });
+        }
+      }
+    }
+    return findings;
+  },
+};
+
+export const duplicateCondition: Rule = {
+  id: 'QA007',
+  name: 'duplicate-condition',
+  category: 'code-quality',
+  severity: 'medium',
+  languages: ['typescript', 'javascript', 'java', 'csharp', 'go', 'kotlin', 'php'],
+  detect(lines, filePath, context?) {
+    const findings: Finding[] = [];
+
+    let currentIfCondition: string | null = null;
+    let currentIfLine = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
+      const line = lines[i].trim();
+
+      // Match `if (condition)`
+      const ifMatch = line.match(/^if\s*\((.+)\)\s*\{?\s*$/);
+      if (ifMatch) {
+        currentIfCondition = ifMatch[1].trim();
+        currentIfLine = i;
+        continue;
+      }
+
+      // Match `} else if (condition)` or `else if (condition)`
+      const elseIfMatch = line.match(/^(?:\}\s*)?else\s+if\s*\((.+)\)\s*\{?\s*$/);
+      if (elseIfMatch && currentIfCondition !== null) {
+        const elseIfCondition = elseIfMatch[1].trim();
+        if (elseIfCondition === currentIfCondition) {
+          findings.push({
+            rule: this.id,
+            severity: this.severity,
+            confidence: 85,
+            category: this.category,
+            message: `Duplicate condition "${currentIfCondition}" — same as if on line ${currentIfLine + 1}`,
+            file: filePath,
+            line: i + 1,
+            snippet: lines[i],
+            suggestion: 'Remove the duplicate else-if branch or fix the condition',
+          });
+        }
+        // Keep tracking — the else if continues the chain
+        continue;
+      }
+
+      // If we hit a line that's not part of the if/else chain, reset
+      // But allow lines that are block content (indented or closing braces)
+      if (line.length > 0 && !line.startsWith('}') && !line.startsWith('{') && currentIfCondition !== null) {
+        // Only reset if this line is at the same or lower indent level as the if
+        // Simple heuristic: if line doesn't start with else, and isn't just a brace, consider reset
+        if (!/^else\b/.test(line)) {
+          // Don't reset — this could be body content. Only reset on a new if statement.
+        }
+      }
+
+      // Reset on a new standalone if
+      if (ifMatch) {
+        // Already handled above
+      }
+    }
+    return findings;
+  },
+};
+
 export const codeQualityRules: Rule[] = [
   consoleLeftBehind,
   todoFixmeHack,
   magicNumbers,
   deepNesting,
   longFunction,
+  unusedImport,
+  duplicateCondition,
 ];
