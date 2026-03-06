@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { consoleLeftBehind, todoFixmeHack, deepNesting, longFunction } from '../../src/rules/code-quality.js';
+import { buildFileContext } from '../../src/context/analyzer.js';
 
 describe('QA001: console-left-behind', () => {
   it('should detect console.log in production code', () => {
@@ -28,8 +29,10 @@ describe('QA001: console-left-behind', () => {
   });
 
   it('should skip commented lines', () => {
-    const lines = ['// console.log("old debug");'];
-    const findings = consoleLeftBehind.detect(lines, 'src/app.ts');
+    const code = '// console.log("old debug");';
+    const lines = [code];
+    const context = buildFileContext('src/app.ts', code);
+    const findings = consoleLeftBehind.detect(lines, 'src/app.ts', context);
     expect(findings).toHaveLength(0);
   });
 });

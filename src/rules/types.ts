@@ -1,3 +1,5 @@
+import type { FileContext } from '../context/types.js';
+
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export type Category = 'error-handling' | 'security' | 'code-quality' | 'test-coverage';
 
@@ -20,7 +22,7 @@ export interface Rule {
   category: Category;
   severity: Severity;
   languages: string[];
-  detect(lines: string[], filePath: string): Finding[];
+  detect(lines: string[], filePath: string, context?: FileContext): Finding[];
 }
 
 export interface ReviewResult {

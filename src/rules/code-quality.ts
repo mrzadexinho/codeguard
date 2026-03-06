@@ -1,4 +1,5 @@
 import type { Rule, Finding } from './types.js';
+import type { FileContext } from '../context/types.js';
 
 export const consoleLeftBehind: Rule = {
   id: 'QA001',
@@ -6,13 +7,13 @@ export const consoleLeftBehind: Rule = {
   category: 'code-quality',
   severity: 'low',
   languages: ['typescript', 'javascript'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     if (filePath.includes('.test.') || filePath.includes('.spec.') || filePath.includes('__tests__')) return findings;
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('*')) continue;
       if (/console\.(log|debug|info)\(/.test(line) && !/eslint-disable/.test(line)) {
         findings.push({
           rule: this.id,
@@ -37,9 +38,10 @@ export const todoFixmeHack: Rule = {
   category: 'code-quality',
   severity: 'low',
   languages: ['typescript', 'javascript', 'python', 'java', 'go', 'rust', 'ruby', 'php', 'csharp', 'kotlin', 'swift', 'cpp', 'c'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isString) continue;
       const line = lines[i];
       const match = line.match(/\b(TODO|FIXME|HACK|XXX|WORKAROUND)\b:?\s*(.*)/i);
       if (match) {
@@ -67,7 +69,7 @@ export const magicNumbers: Rule = {
   category: 'code-quality',
   severity: 'low',
   languages: ['typescript', 'javascript', 'python', 'java', 'go', 'csharp', 'kotlin'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     if (filePath.includes('.test.') || filePath.includes('.spec.') || filePath.includes('__tests__')) return findings;
     if (filePath.includes('.config.') || filePath.includes('config/')) return findings;
@@ -75,8 +77,8 @@ export const magicNumbers: Rule = {
     const trivialNumbers = new Set(['0', '1', '-1', '2', '100', '1000']);
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('#') || line.startsWith('*')) continue;
       if (/^\s*(const|let|var|export)\s/.test(lines[i])) continue; // Skip declarations
       if (/^\s*return\s/.test(lines[i])) continue;
 
@@ -109,18 +111,19 @@ export const deepNesting: Rule = {
   category: 'code-quality',
   severity: 'medium',
   languages: ['typescript', 'javascript', 'java', 'csharp', 'go', 'rust', 'cpp', 'c', 'kotlin', 'swift', 'php'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     const maxDepth = 4;
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i];
       const indent = line.match(/^(\s*)/)?.[1] ?? '';
       const indentLevel = indent.includes('\t')
         ? indent.split('\t').length - 1
         : Math.floor(indent.length / 2);
 
-      if (indentLevel > maxDepth && line.trim().length > 0 && !line.trim().startsWith('//') && !line.trim().startsWith('*')) {
+      if (indentLevel > maxDepth && line.trim().length > 0) {
         // Only flag control flow statements at deep levels
         const trimmed = line.trim();
         if (/^(if|else|for|while|switch|case)\s*[\s(]/.test(trimmed)) {
@@ -148,7 +151,7 @@ export const longFunction: Rule = {
   category: 'code-quality',
   severity: 'medium',
   languages: ['typescript', 'javascript', 'java', 'csharp', 'go', 'rust', 'cpp', 'c', 'kotlin', 'swift', 'php', 'python'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     const maxLines = 50;
     const funcPattern = /^\s*(export\s+)?(async\s+)?function\s+\w+|^\s*(export\s+)?(const|let|var)\s+\w+\s*=\s*(async\s+)?\(|^\s*(public|private|protected|static|\s)*(async\s+)?\w+\s*\([^)]*\)\s*(\{|:)/;

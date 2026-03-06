@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { evalUsage, innerHtmlAssignment, hardcodedSecrets, sqlInjection, commandInjection } from '../../src/rules/security.js';
+import { buildFileContext } from '../../src/context/analyzer.js';
 
 // These tests verify that codeguard's DETECTION rules correctly identify
 // security anti-patterns in source code strings. No vulnerable code is executed.
@@ -14,8 +15,10 @@ describe('SEC001: eval-usage', () => {
   });
 
   it('should skip comments', () => {
-    const lines = ['// eval(something) is bad'];
-    const findings = evalUsage.detect(lines, 'test.ts');
+    const code = '// eval(something) is bad';
+    const lines = [code];
+    const context = buildFileContext('test.ts', code);
+    const findings = evalUsage.detect(lines, 'test.ts', context);
     expect(findings).toHaveLength(0);
   });
 

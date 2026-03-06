@@ -1,5 +1,6 @@
 import type { Rule, Finding, ReviewResult } from './types.js';
 import { createSummary } from './types.js';
+import { buildFileContext } from '../context/analyzer.js';
 import { errorHandlingRules } from './error-handling.js';
 import { securityRules } from './security.js';
 import { codeQualityRules } from './code-quality.js';
@@ -21,6 +22,7 @@ export class RuleEngine {
 
   reviewFile(filePath: string, content: string, options: EngineOptions = {}): ReviewResult {
     const lines = content.split('\n');
+    const context = buildFileContext(filePath, content);
     const language = detectLanguageFromPath(filePath);
     const minConfidence = options.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
 
@@ -33,7 +35,7 @@ export class RuleEngine {
 
     const findings: Finding[] = [];
     for (const rule of applicableRules) {
-      const ruleFindings = rule.detect(lines, filePath);
+      const ruleFindings = rule.detect(lines, filePath, context);
       findings.push(...ruleFindings.filter((f) => f.confidence >= minConfidence));
     }
 

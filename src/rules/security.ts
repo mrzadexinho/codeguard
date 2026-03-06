@@ -1,4 +1,5 @@
 import type { Rule, Finding } from './types.js';
+import type { FileContext } from '../context/types.js';
 
 // All rules in this file are DETECTION rules.
 // They use regex to find security anti-patterns in user code.
@@ -10,15 +11,15 @@ export const evalUsage: Rule = {
   category: 'security',
   severity: 'critical',
   languages: ['typescript', 'javascript', 'python', 'php'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     // Detects: eval(...), new Function(...)
     const evalPattern = /\beval\s*\(/;
     const funcConstructor = /new\s+Function\s*\(/;
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('#') || line.startsWith('*')) continue;
       if (evalPattern.test(line)) {
         findings.push({
           rule: this.id,
@@ -56,11 +57,11 @@ export const innerHtmlAssignment: Rule = {
   category: 'security',
   severity: 'high',
   languages: ['typescript', 'javascript'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('*')) continue;
       if (/\.innerHTML\s*=/.test(line)) {
         findings.push({
           rule: this.id,
@@ -98,7 +99,7 @@ export const hardcodedSecrets: Rule = {
   category: 'security',
   severity: 'critical',
   languages: ['typescript', 'javascript', 'python', 'java', 'go', 'ruby', 'php', 'csharp', 'rust', 'kotlin', 'swift'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     if (filePath.includes('.test.') || filePath.includes('.spec.') || filePath.includes('__tests__')) return findings;
 
@@ -111,8 +112,8 @@ export const hardcodedSecrets: Rule = {
     ];
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('#') || line.startsWith('*')) continue;
 
       for (const { regex, name } of patterns) {
         if (regex.test(line)) {
@@ -141,7 +142,7 @@ export const sqlInjection: Rule = {
   category: 'security',
   severity: 'critical',
   languages: ['typescript', 'javascript', 'python', 'java', 'php', 'ruby', 'go', 'csharp'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     // Detects SQL queries built with string interpolation or concatenation
     const templateLiteralSql = /(?:SELECT|INSERT|UPDATE|DELETE|DROP)\s+.*\$\{/;
@@ -149,8 +150,8 @@ export const sqlInjection: Rule = {
     const fstringSql = /f['"](?:SELECT|INSERT|UPDATE|DELETE|DROP)\s+.*\{/;
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('#') || line.startsWith('*')) continue;
 
       if (templateLiteralSql.test(line)) {
         findings.push({
@@ -202,7 +203,7 @@ export const commandInjection: Rule = {
   category: 'security',
   severity: 'critical',
   languages: ['typescript', 'javascript', 'python', 'ruby', 'php'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     // Detects shell commands built with dynamic strings (regex detection only)
     const shellExecInterp = /exec\s*\(\s*`/;
@@ -210,8 +211,8 @@ export const commandInjection: Rule = {
     const pySubproc = /subprocess\.call\s*\(\s*['"`f]/;
 
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
-      if (line.startsWith('//') || line.startsWith('#') || line.startsWith('*')) continue;
 
       if (shellExecInterp.test(line)) {
         findings.push({

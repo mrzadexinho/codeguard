@@ -1,4 +1,5 @@
 import type { Rule, Finding } from './types.js';
+import type { FileContext } from '../context/types.js';
 
 export const emptyCatchBlock: Rule = {
   id: 'ERR001',
@@ -6,9 +7,10 @@ export const emptyCatchBlock: Rule = {
   category: 'error-handling',
   severity: 'critical',
   languages: ['typescript', 'javascript', 'java', 'csharp', 'kotlin', 'swift', 'php', 'cpp'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
       // catch (...) { } or catch { } on same line
       if (/catch\s*(\([^)]*\))?\s*\{\s*\}/.test(line)) {
@@ -53,9 +55,10 @@ export const catchOnlyLogs: Rule = {
   category: 'error-handling',
   severity: 'high',
   languages: ['typescript', 'javascript', 'java', 'csharp', 'kotlin', 'php'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
       if (/catch\s*(\([^)]*\))?\s*\{/.test(line)) {
         // Look at next few lines to see if only console.log/warn/error
@@ -100,9 +103,10 @@ export const promiseNoAwaitNoCatch: Rule = {
   category: 'error-handling',
   severity: 'high',
   languages: ['typescript', 'javascript'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
       // Detect fire-and-forget promises: someAsyncFn() without await and without .catch
       if (/\w+\([^)]*\)\s*;?\s*$/.test(line) && !line.startsWith('await ') && !line.startsWith('return ')) {
@@ -132,9 +136,10 @@ export const genericCatch: Rule = {
   category: 'error-handling',
   severity: 'medium',
   languages: ['typescript', 'javascript', 'java', 'csharp', 'kotlin', 'php'],
-  detect(lines, filePath) {
+  detect(lines, filePath, context?) {
     const findings: Finding[] = [];
     for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
       const line = lines[i].trim();
       if (/catch\s*\(\s*(e|err|error|ex|exception)\s*\)\s*\{/.test(line)) {
         // Check if catch body just re-throws without adding context
