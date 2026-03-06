@@ -3,3 +3,4 @@
 
 export * from './parser/index.js';
 export * from './rules/index.js';
+export * from './context/index.js';
