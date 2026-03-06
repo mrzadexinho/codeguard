@@ -4,6 +4,7 @@ import { buildFileContext } from '../context/analyzer.js';
 import { errorHandlingRules } from './error-handling.js';
 import { securityRules } from './security.js';
 import { codeQualityRules } from './code-quality.js';
+import { insecureDefaultsRules } from './insecure-defaults.js';
 
 export interface EngineOptions {
   minConfidence?: number;
@@ -17,7 +18,7 @@ export class RuleEngine {
   private rules: Rule[];
 
   constructor(rules?: Rule[]) {
-    this.rules = rules ?? [...errorHandlingRules, ...securityRules, ...codeQualityRules];
+    this.rules = rules ?? [...errorHandlingRules, ...securityRules, ...codeQualityRules, ...insecureDefaultsRules];
   }
 
   reviewFile(filePath: string, content: string, options: EngineOptions = {}): ReviewResult {

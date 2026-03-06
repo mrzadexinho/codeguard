@@ -3,6 +3,7 @@ export type { EngineOptions } from './engine.js';
 export { errorHandlingRules } from './error-handling.js';
 export { securityRules } from './security.js';
 export { codeQualityRules } from './code-quality.js';
+export { insecureDefaultsRules } from './insecure-defaults.js';
 export type {
   Rule,
   Finding,
