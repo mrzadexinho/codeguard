@@ -169,9 +169,103 @@ export const genericCatch: Rule = {
   },
 };
 
+export const asyncNoErrorHandling: Rule = {
+  id: 'ERR005',
+  name: 'async-no-error-handling',
+  category: 'error-handling',
+  severity: 'medium',
+  languages: ['typescript', 'javascript'],
+  detect(lines, filePath, context?) {
+    const findings: Finding[] = [];
+    const asyncPattern = /async\s+function\s+\w+|async\s*\(|async\s*\w+\s*=>|async\s*\(/;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
+      const line = lines[i].trim();
+
+      if (!asyncPattern.test(line)) continue;
+
+      // Track brace depth to find the function body
+      let braceDepth = 0;
+      let foundOpen = false;
+      let hasAwait = false;
+      let hasTry = false;
+      const startLine = i;
+
+      for (let j = i; j < lines.length; j++) {
+        const bodyLine = lines[j];
+        for (const ch of bodyLine) {
+          if (ch === '{') {
+            braceDepth++;
+            foundOpen = true;
+          } else if (ch === '}') {
+            braceDepth--;
+          }
+        }
+
+        if (foundOpen) {
+          if (/\bawait\b/.test(bodyLine)) hasAwait = true;
+          if (/\btry\b/.test(bodyLine)) hasTry = true;
+        }
+
+        if (foundOpen && braceDepth === 0) break;
+      }
+
+      if (hasAwait && !hasTry) {
+        findings.push({
+          rule: this.id,
+          severity: this.severity,
+          confidence: 65,
+          category: this.category,
+          message: 'Async function uses await but has no try-catch — unhandled rejection possible',
+          file: filePath,
+          line: startLine + 1,
+          snippet: lines[startLine],
+          suggestion: 'Wrap await calls in try-catch or ensure the caller handles errors',
+        });
+      }
+    }
+    return findings;
+  },
+};
+
+export const optionalChainOnCriticalPath: Rule = {
+  id: 'ERR006',
+  name: 'optional-chain-on-critical-path',
+  category: 'error-handling',
+  severity: 'medium',
+  languages: ['typescript', 'javascript'],
+  detect(lines, filePath, context?) {
+    const findings: Finding[] = [];
+    const authKeywords = /\b(auth|permissions?|roles?|sessions?|tokens?|credentials?|acl|access)\b/i;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
+      const line = lines[i].trim();
+
+      if (line.includes('?.') && authKeywords.test(line)) {
+        findings.push({
+          rule: this.id,
+          severity: this.severity,
+          confidence: 60,
+          category: this.category,
+          message: 'Optional chaining on security/auth path — may silently return undefined instead of throwing',
+          file: filePath,
+          line: i + 1,
+          snippet: lines[i],
+          suggestion: 'Validate auth objects explicitly and throw if missing',
+        });
+      }
+    }
+    return findings;
+  },
+};
+
 export const errorHandlingRules: Rule[] = [
   emptyCatchBlock,
   catchOnlyLogs,
   promiseNoAwaitNoCatch,
   genericCatch,
+  asyncNoErrorHandling,
+  optionalChainOnCriticalPath,
 ];

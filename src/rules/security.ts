@@ -245,10 +245,62 @@ export const commandInjection: Rule = {
   },
 };
 
+export const unsafeDeserialization: Rule = {
+  id: 'SEC010',
+  name: 'unsafe-deserialization',
+  category: 'security',
+  severity: 'critical',
+  languages: ['python'],
+  detect(lines, filePath, context?) {
+    const findings: Finding[] = [];
+    if (filePath.includes('.test.') || filePath.includes('.spec.') || filePath.includes('__tests__')) return findings;
+
+    // yaml.load( without SafeLoader — but NOT yaml.safe_load
+    const yamlUnsafe = /yaml\.load\s*\(/;
+    const yamlSafe = /yaml\.safe_load\s*\(/;
+    // pickle.load( or pickle.loads( — detects unsafe deserialization patterns
+    const picklePattern = /pickle\.loads?\s*\(/;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (context?.lines[i]?.isComment || context?.lines[i]?.isString) continue;
+      const line = lines[i].trim();
+
+      if (yamlUnsafe.test(line) && !yamlSafe.test(line)) {
+        findings.push({
+          rule: this.id,
+          severity: this.severity,
+          confidence: 90,
+          category: this.category,
+          message: 'yaml.load() without SafeLoader — allows arbitrary code execution during deserialization',
+          file: filePath,
+          line: i + 1,
+          snippet: lines[i],
+          suggestion: 'Use yaml.safe_load() or pass Loader=yaml.SafeLoader',
+        });
+      }
+      if (picklePattern.test(line)) {
+        findings.push({
+          rule: this.id,
+          severity: this.severity,
+          confidence: 90,
+          category: this.category,
+          message: 'Unsafe deserialization — allows arbitrary code execution from untrusted data',
+          file: filePath,
+          line: i + 1,
+          snippet: lines[i],
+          suggestion: 'Use JSON or a safe serialization format',
+        });
+      }
+    }
+    return findings;
+  },
+};
+
 export const securityRules: Rule[] = [
   evalUsage,
   innerHtmlAssignment,
   hardcodedSecrets,
   sqlInjection,
   commandInjection,
+  unsafeDeserialization,
 ];
