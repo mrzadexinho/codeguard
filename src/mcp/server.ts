@@ -9,7 +9,7 @@ import { registerAnalysisTools } from './tools/analysis-tools.js';
 async function main() {
   const server = new McpServer({
     name: 'codeguard',
-    version: '0.2.0',
+    version: '1.2.0',
   });
 
   const engine = new RuleEngine();

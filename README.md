@@ -1,7 +1,7 @@
 # codeguard
 
 [![CI](https://github.com/mrzadexinho/codeguard/actions/workflows/ci.yml/badge.svg)](https://github.com/mrzadexinho/codeguard/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/codeguard-mcp.svg)](https://www.npmjs.com/package/codeguard-mcp)
+[![npm version](https://img.shields.io/npm/v/@mrzadexinho/codeguard.svg)](https://www.npmjs.com/package/@mrzadexinho/codeguard)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Context-aware AI code review MCP server. Automated pattern detection for bugs, security vulnerabilities, insecure defaults, and silent failures.
@@ -12,14 +12,16 @@ AI assistants review code but miss common anti-patterns that automated detection
 
 ## Quick Start
 
-### As MCP Server (Claude Code)
+### As MCP Server
+
+Works with any MCP-compatible client — **Claude Code**, Claude Desktop, Cursor, Windsurf, VS Code (Copilot), Continue.dev, Zed, Cline, and more.
 
 ```json
 {
   "mcpServers": {
     "codeguard": {
       "command": "npx",
-      "args": ["-y", "codeguard-mcp"]
+      "args": ["-y", "@mrzadexinho/codeguard"]
     }
   }
 }
@@ -28,7 +30,7 @@ AI assistants review code but miss common anti-patterns that automated detection
 ### As Library
 
 ```typescript
-import { RuleEngine } from 'codeguard-mcp';
+import { RuleEngine } from '@mrzadexinho/codeguard';
 
 const engine = new RuleEngine();
 const result = engine.reviewFile('app.ts', sourceCode);

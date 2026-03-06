@@ -1,6 +1,6 @@
 {
-  "name": "codeguard-mcp",
-  "version": "0.2.0",
+  "name": "@mrzadexinho/codeguard",
+  "version": "1.2.0",
   "description": "AI code review MCP server — automated pattern detection for bugs, security issues, and silent failures",
   "type": "module",
   "main": "dist/index.js",
